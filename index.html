@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DOP didáctico editable v18</title>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style>
+:root{
+  --a4w:794px; --a4h:1123px; --headH:128px;
+  --ink:#111; --panel:#fff; --muted:#64748b; --grid:#d4d4d8;
+  --sheet:#ffffff; --head:#ffe494; --accent:#13a8e8; --danger:#dc2626;
+}
+*{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#e5e7eb;color:#111;overflow:hidden}
+button,input,select,textarea{font-family:inherit} button,.filebtn{height:34px;border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:0 10px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:5px} button:hover,.filebtn:hover{background:#eff6ff;border-color:#93c5fd}.danger{color:#b91c1c}.active{background:#bfdbfe!important;font-weight:700}.small{font-size:12px;color:#475569;line-height:1.35}
+#app{height:100vh;display:grid;grid-template-columns:250px 1fr 320px;grid-template-rows:56px 1fr;transition:grid-template-columns .18s ease} body.left-closed #app{grid-template-columns:0 1fr 320px} body.right-closed #app{grid-template-columns:250px 1fr 0} body.left-closed.right-closed #app{grid-template-columns:0 1fr 0}
+.topbar{grid-column:1/4;background:#0f172a;color:white;display:flex;align-items:center;gap:8px;padding:8px 12px;overflow:auto;white-space:nowrap}.title{font-weight:800;margin-right:4px}.spacer{flex:1}.tabs{display:flex;gap:6px}.tab{height:34px;border:1px solid #64748b;border-radius:8px;padding:0 12px;background:white;color:#111;cursor:pointer}.tab.active{background:#93c5fd}
+.sidebar,.props{background:#fff;overflow:auto;padding:12px;min-width:0}.sidebar{border-right:1px solid #cbd5e1}.props{border-left:1px solid #cbd5e1} body.left-closed .sidebar,body.right-closed .props{padding:0;border:0;overflow:hidden}
+h3{font-size:15px;margin:11px 0 8px}.tool{display:flex;align-items:center;gap:10px;border:1px solid #cbd5e1;background:#fafafa;border-radius:9px;padding:8px;margin:8px 0;cursor:grab;user-select:none}.tool:hover{background:#eff6ff;border-color:#38bdf8}.tool svg{width:44px;height:44px;flex:none}.tool span{font-size:13px}.group{border:1px solid #e5e7eb;border-radius:10px;padding:10px;margin:10px 0;background:#fbfdff}.row{margin:8px 0}.row label{display:block;font-size:12px;color:#374151;margin-bottom:4px}.row input,.row select,.row textarea{width:100%;border:1px solid #cbd5e1;border-radius:7px;padding:7px;background:#fff;font-size:13px}.row textarea{min-height:70px;resize:vertical}.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.workspace{position:relative;overflow:auto;background:#e5e7eb;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:20px 20px}.sheet-wrap{padding:32px;min-width:980px;min-height:1320px}.sheet{position:relative;width:var(--a4w);height:var(--a4h);margin:0 auto 40px;background:var(--sheet);border:2px solid #111;box-shadow:0 8px 24px rgba(0,0,0,.23);overflow:hidden}.sheet:before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(0,0,0,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.06) 1px,transparent 1px);background-size:20px 20px;pointer-events:none;z-index:1}.sheet.hidden{display:none} body.exporting .sheet:before{display:none}
+.header{position:absolute;left:12px;right:12px;top:10px;height:106px;background:var(--head);border:2px solid #111;z-index:30;display:grid;grid-template-rows:34px 26px 42px}.h-title{display:flex;align-items:center;justify-content:center;border-bottom:2px solid #111;font-size:27px;font-weight:900;letter-spacing:.2px;white-space:nowrap;overflow:hidden}.h-sub{display:flex;align-items:center;justify-content:center;border-bottom:2px solid #111;font-size:18px;font-weight:900}.h-grid{display:grid;grid-template-columns:1.1fr 2.2fr .9fr .7fr;grid-template-rows:21px 21px}.hcell{border-right:2px solid #111;border-bottom:2px solid #111;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:6px;padding:0 6px;font-size:11px;font-weight:800;overflow:hidden}.hcell:nth-child(4),.hcell:nth-child(8){border-right:0}.hcell:nth-child(n+5){border-bottom:0}.hcell input{height:18px;min-width:0;border:0;border-left:1px solid #111;background:transparent;padding:0 5px;font-size:13px;font-weight:500}.hcell input:focus,.h-title[contenteditable]:focus{outline:2px solid #0ea5e9;background:#fff9}
+.canvas{position:absolute;left:0;right:0;top:var(--headH);bottom:0;z-index:5}.svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:6}.edge{fill:none;stroke:#111;pointer-events:stroke;cursor:pointer}.edge.selected{stroke:var(--danger)}.arrowHead{fill:#111}.edgeLabel{position:absolute;z-index:10;min-width:42px;background:#fff9;border:1px dashed #999;border-radius:4px;font-size:12px;padding:2px 4px;text-align:center}.edgeLabel:focus{outline:2px solid #0ea5e9;background:white}.edgeHandle,.endHandle{position:absolute;width:13px;height:13px;border:2px solid #fff;background:#0ea5e9;border-radius:50%;box-shadow:0 1px 5px #0005;z-index:50;transform:translate(-50%,-50%);cursor:crosshair}.endHandle{background:#fff;border:3px solid #0ea5e9;cursor:grab}.endHandle.tail{background:#e0f2fe}.endHandle.head{background:#dbeafe}.bendHandle{position:absolute;width:14px;height:14px;border:2px solid #fff;background:#f59e0b;border-radius:50%;box-shadow:0 1px 5px #0005;z-index:49;transform:translate(-50%,-50%);cursor:move}
+.node{position:absolute;z-index:20;cursor:move;user-select:none}.node.selected{outline:2px dashed var(--danger);outline-offset:5px}.shape{position:absolute;left:0;top:0;width:58px;height:58px;display:flex;align-items:center;justify-content:center}.operation .shape{border:3px solid #111;border-radius:50%}.inspection .shape{border:3px solid #111}.combined .shape{border:3px solid #111}.combined .shape:after{content:"";position:absolute;inset:7px;border:3px solid #111;border-radius:50%}.num{width:42px;text-align:center;border:0;background:transparent;font-size:22px;font-weight:900;z-index:2}.desc{position:absolute;left:70px;top:5px;width:170px;height:54px;border:0;background:transparent;font-size:13px;resize:none;overflow:hidden;line-height:1.12}.desc:focus,.num:focus,.mat-text:focus,.note textarea:focus{outline:2px solid #0ea5e9;background:#fff9}.material{width:180px;height:58px}.material:before{content:"";position:absolute;left:8px;right:8px;top:38px;border-top:4px solid #111}.mat-text{position:absolute;left:0;top:8px;width:180px;border:0;background:transparent;text-align:center;font-size:14px;font-weight:800}.intermediate{width:185px;height:66px}.intermediate:before,.intermediate:after{content:"";position:absolute;left:8px;right:8px;border-top:4px solid #111}.intermediate:before{top:12px}.intermediate:after{top:54px}.intermediate .mat-text{width:185px;top:27px}.note{width:128px;height:52px}.note textarea{width:100%;height:100%;border:1px dashed transparent;border-radius:8px;background:transparent;resize:none;padding:6px 8px;font-size:13px;line-height:1.15;overflow:auto}.note:hover textarea,.note.selected textarea{border-color:#333}.noteMove{position:absolute;right:-24px;top:-2px;width:20px;height:20px;border:1px solid #94a3b8;border-radius:50%;background:#fff;display:none;align-items:center;justify-content:center;font-size:12px;cursor:move;box-shadow:0 1px 5px #0003;z-index:85}.note:hover .noteMove,.note.selected .noteMove{display:flex}.pentagonUp,.pentagonDown{width:70px;height:62px}.pentagonUp .shape,.pentagonDown .shape{width:64px;height:58px;border:0}.pentagonUp .shape svg,.pentagonDown .shape svg{position:absolute;inset:0;width:64px;height:58px;overflow:visible;shape-rendering:geometricPrecision}.pentagonUp .shape polygon,.pentagonDown .shape polygon{fill:#fff;stroke:#111;stroke-width:3;vector-effect:non-scaling-stroke;stroke-linejoin:round}.pentagonUp .shape .num,.pentagonDown .shape .num{position:absolute;left:9px;top:11px;width:46px;height:34px;font-size:28px;font-weight:900;text-align:center}.snapMarker{position:absolute;width:14px;height:14px;border-radius:50%;background:#f97316;border:2px solid #fff;box-shadow:0 1px 5px #0006;z-index:90;pointer-events:none;transform:translate(-50%,-50%)}.port{position:absolute;width:12px;height:12px;background:#0ea5e9;border:2px solid white;border-radius:50%;display:none;z-index:65;cursor:crosshair;box-shadow:0 1px 4px #0004}.node:hover .port,.node.selected .port{display:block}.port.top{left:23px;top:-7px}.port.bottom{left:23px;top:53px}.port.left{left:-7px;top:23px}.port.right{left:53px;top:23px}.material .port.top,.material .port.bottom,.intermediate .port.top,.intermediate .port.bottom,.note .port.top,.note .port.bottom{left:50%;transform:translateX(-50%)}.material .port.bottom{top:44px}.material .port.left{top:32px}.material .port.right{left:174px;top:32px}.intermediate .port.bottom{top:60px}.intermediate .port.left{top:33px}.intermediate .port.right{left:179px;top:33px}.note .port.right{left:122px}.note .port.bottom{top:46px}.note .port.left{top:20px}.note .port.top{top:-7px}.pentagonUp .port.right,.pentagonDown .port.right{left:64px}.pentagonUp .port.bottom,.pentagonDown .port.bottom{top:58px}.resize{position:absolute;right:-13px;bottom:-13px;width:14px;height:14px;border-radius:3px;background:#f97316;border:2px solid white;box-shadow:0 1px 4px #0005;display:none;z-index:80;cursor:nwse-resize}.node.selected .resize{display:block}
+.quick{position:absolute;z-index:90;pointer-events:none}.qbtn{position:absolute;width:28px;height:28px;border-radius:50%;background:#dff4ffcc;border:1px solid #bae6fd;color:#0284c7;font-weight:900;display:flex;align-items:center;justify-content:center;pointer-events:auto;cursor:pointer}.qbtn:hover{background:#7dd3fc;color:#fff}.palette{position:absolute;z-index:100;background:white;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 8px 24px #0003;padding:8px;display:none;gap:6px}.palette button{width:38px;height:34px;padding:0}.palette svg{width:28px;height:28px}
+@media print{body{overflow:visible;background:white}#app{display:block}.topbar,.sidebar,.props{display:none}.workspace{overflow:visible;background:white;background-image:none}.sheet-wrap{padding:0;min-width:0}.sheet{box-shadow:none;margin:0;page-break-after:always}.sheet:before{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+ <div class="topbar">
+  <span class="title">DOP didáctico</span><button id="toggleLeft">☰ Componentes</button><button id="toggleRight">Propiedades ☰</button>
+  <div class="tabs" id="tabs"></div><button id="addPage">+ Hoja</button><button id="dupPage">Duplicar</button><button id="delPage">Eliminar hoja</button><span class="spacer"></span>
+  <button id="renumber">Renumerar</button><button id="clearPage">Limpiar hoja</button><button id="saveJson">Guardar JSON</button><label class="filebtn">Abrir JSON<input id="openJson" type="file" accept=".json" hidden></label><button id="downloadPng">Descargar hoja PNG</button><button id="downloadAll">Descargar todas ZIP</button>
+ </div>
+ <aside class="sidebar">
+  <h3>Símbolos DOP</h3><div class="small">Arrastra una forma al A4 o selecciona una forma y usa las flechas celestes alrededor para agregar otra conectada.</div>
+  <div class="tool" draggable="true" data-type="material"><svg><line x1="4" y1="31" x2="40" y2="31" stroke="#111" stroke-width="4"/><text x="22" y="19" text-anchor="middle" font-size="10">Material</text></svg><span>Entrada de material</span></div>
+  <div class="tool" draggable="true" data-type="operation"><svg><circle cx="22" cy="22" r="17" fill="none" stroke="#111" stroke-width="3"/><text x="22" y="29" text-anchor="middle" font-size="20" font-weight="800">1</text></svg><span>Operación</span></div>
+  <div class="tool" draggable="true" data-type="inspection"><svg><rect x="7" y="7" width="32" height="32" fill="none" stroke="#111" stroke-width="3"/><text x="23" y="30" text-anchor="middle" font-size="20" font-weight="800">1</text></svg><span>Inspección</span></div>
+  <div class="tool" draggable="true" data-type="combined"><svg><rect x="7" y="7" width="32" height="32" fill="none" stroke="#111" stroke-width="3"/><circle cx="23" cy="23" r="11" fill="none" stroke="#111" stroke-width="3"/><text x="23" y="30" text-anchor="middle" font-size="17" font-weight="800">1</text></svg><span>Operación + inspección</span></div>
+  <div class="tool" draggable="true" data-type="intermediate"><svg><line x1="4" y1="11" x2="40" y2="11" stroke="#111" stroke-width="4"/><line x1="4" y1="35" x2="40" y2="35" stroke="#111" stroke-width="4"/><text x="22" y="28" text-anchor="middle" font-size="9">Producto</text></svg><span>Producto intermedio</span></div>
+  <div class="tool" draggable="true" data-type="note"><svg><rect x="5" y="7" width="36" height="30" rx="5" fill="none" stroke="#111" stroke-dasharray="4 3" stroke-width="2"/><text x="23" y="27" text-anchor="middle" font-size="11">Nota</text></svg><span>Nota / texto</span></div>
+  <div class="tool" draggable="true" data-type="pentagonUp"><svg><polygon points="22,3 40,17 34,40 10,40 4,17" fill="none" stroke="#111" stroke-width="3"/></svg><span>Pentágono arriba</span></div>
+  <div class="tool" draggable="true" data-type="pentagonDown"><svg><polygon points="10,4 34,4 40,27 22,42 4,27" fill="none" stroke="#111" stroke-width="3"/></svg><span>Pentágono abajo</span></div>
+  <h3>Para clase</h3><div class="small">El fondo aparece con cuadrícula para construir mejor, pero al descargar la imagen se exporta limpio. Las flechas son ortogonales: verticales, horizontales o con quiebre en ángulo recto.</div>
+ </aside>
+ <main class="workspace" id="workspace"><div class="sheet-wrap" id="sheetWrap"></div></main>
+ <aside class="props">
+  <h3>Construcción rápida</h3><div class="group"><div id="selInfo" class="small">Selecciona una forma o una flecha.</div><div id="nodeActions" style="display:none"><div class="row"><label>Forma nueva</label><select id="newType"><option value="operation">Operación</option><option value="inspection">Inspección</option><option value="combined">Operación + inspección</option><option value="material">Entrada de material</option><option value="intermediate">Producto intermedio</option><option value="note">Nota</option><option value="pentagonUp">Pentágono arriba</option><option value="pentagonDown">Pentágono abajo</option></select></div><div class="two"><div class="row"><label>Dirección</label><select id="newDir"><option value="bottom">Abajo</option><option value="right">Derecha</option><option value="left">Izquierda</option><option value="top">Arriba</option></select></div><div class="row"><label>Distancia</label><input id="newDist" type="number" value="50" min="20" max="500"></div></div><button id="addConnected">Agregar y conectar</button></div><div id="edgeActions" style="display:none"><div class="row"><label>Rama desde la flecha seleccionada</label><select id="branchType"><option value="material">Entrada / salida</option><option value="intermediate">Producto intermedio</option><option value="operation">Operación</option><option value="inspection">Inspección</option><option value="combined">Operación + inspección</option><option value="note">Nota</option><option value="pentagonUp">Pentágono arriba</option><option value="pentagonDown">Pentágono abajo</option></select></div><div class="two"><div class="row"><label>Dirección</label><select id="branchDir"><option value="right">Derecha</option><option value="left">Izquierda</option><option value="bottom">Abajo</option><option value="top">Arriba</option></select></div><div class="row"><label>Distancia</label><input id="branchDist" type="number" value="50" min="20" max="500"></div></div><button id="addBranch">Crear rama conectada</button><button id="addFreeArrow" style="margin-left:6px">Crear flecha libre</button><div class="small" style="margin-top:6px">La flecha libre sale del punto medio de la flecha seleccionada. Puedes dejarla suelta o conectarla después con sus controles.</div></div></div>
+  <h3>Editar seleccionado</h3><div class="group"><div id="editBox" class="small">No hay elemento seleccionado.</div><div id="nodeEdit" style="display:none"><div class="row"><label>Número</label><input id="editNum"></div><div class="row"><label>Texto</label><textarea id="editText"></textarea></div><div class="row"><label>Tamaño de forma</label><input id="editScale" type="range" min="65" max="170" value="100"></div><div class="row"><label>Tamaño de texto</label><input id="editFont" type="range" min="8" max="30" value="13"></div><button id="duplicateSel">Duplicar símbolo</button></div><div id="edgeEdit" style="display:none"><div class="row"><label>Grosor de flecha</label><input id="edgeStroke" type="range" min="1" max="8" value="3"></div><div class="row"><label>Tamaño de cabeza</label><input id="edgeHead" type="range" min="5" max="22" value="10"></div></div><button id="deleteSel" class="danger">Eliminar seleccionado</button></div>
+  <h3>Ficha del DOP</h3><div class="group"><div class="row"><label>Empresa / título</label><input id="hCompany"></div><div class="row"><label>Departamento</label><input id="hDept"></div><div class="row"><label>Elaborado por</label><input id="hAuthor"></div><div class="row"><label>Fecha</label><input id="hDate"></div><div class="row"><label>Área</label><input id="hArea"></div><div class="row"><label>Nombre del proceso</label><input id="hProcess"></div><div class="row"><label>Página</label><input id="hPage"></div></div>
+  <h3>Colores</h3><div class="group"><div class="row"><label>Fondo A4</label><input id="sheetColor" type="color" value="#d8f39a"></div><div class="row"><label>Ficha</label><input id="headerColor" type="color" value="#ffe494"></div></div>
+ </aside>
+</div>
+<div id="quick" class="quick" style="display:none"><div class="qbtn" data-dir="top">↑</div><div class="qbtn" data-dir="right">→</div><div class="qbtn" data-dir="bottom">↓</div><div class="qbtn" data-dir="left">←</div></div>
+<div id="palette" class="palette"></div>
+<script>
+const TYPES=['material','operation','inspection','combined','intermediate','note','pentagonUp','pentagonDown'];
+const NUM_TYPES=['operation','inspection','combined'];
+const LETTER_TYPES=['pentagonUp','pentagonDown'];
+const SHEET_W=794, SHEET_H=1123, HEADER_H=128, CANVAS_H=SHEET_H-HEADER_H;
+const els={tabs:gid('tabs'),wrap:gid('sheetWrap'),workspace:gid('workspace'),quick:gid('quick'),palette:gid('palette')};
+let pages=[],active=0,selected=null,drag=null,connecting=null,endpointDrag=null,paletteDir=null;
+function gid(id){return document.getElementById(id)}
+function uid(p='id'){return p+Math.random().toString(36).slice(2,9)}
+function defPage(){return {header:{company:'COMPAÑÍA / EMPRESA',dept:'Producción',author:'Nombre del alumno',date:new Date().toLocaleDateString('es-PE'),area:'Área',process:'Nombre del proceso',page:'1 de 1'},nodes:[],edges:[],colors:{sheet:'#ffffff',header:'#ffe494'}}}
+function cur(){return pages[active]} function sheet(){return gid('sheet'+active)} function canvas(){return gid('canvas'+active)}
+function init(){pages=[defPage()];renderAll();bindUI()} init();
+function bindUI(){
+ gid('toggleLeft').onclick=()=>document.body.classList.toggle('left-closed'); gid('toggleRight').onclick=()=>document.body.classList.toggle('right-closed');
+ gid('addPage').onclick=()=>{pages.push(defPage());active=pages.length-1;syncPageNumbers();renderAll()}; gid('dupPage').onclick=()=>{const cp=JSON.parse(JSON.stringify(cur())); cp.nodes.forEach(n=>n.id=uid('n')); cp.edges=[]; pages.splice(active+1,0,cp); active++; syncPageNumbers(); renderAll()}; gid('delPage').onclick=()=>{if(pages.length>1){pages.splice(active,1);active=Math.max(0,active-1);syncPageNumbers();renderAll()}};
+ gid('renumber').onclick=renumber; gid('clearPage').onclick=()=>{if(confirm('¿Limpiar la hoja actual?')){cur().nodes=[];cur().edges=[];select(null);renderPage(active)}};
+ gid('saveJson').onclick=saveJson; gid('openJson').onchange=openJson; gid('downloadPng').onclick=()=>downloadPng(active); gid('downloadAll').onclick=downloadAll;
+ document.querySelectorAll('.tool').forEach(t=>{t.ondragstart=e=>e.dataTransfer.setData('type',t.dataset.type)});
+ gid('addConnected').onclick=()=>selected?.kind==='node'&&addConnected(selected.id,gid('newType').value,gid('newDir').value,+gid('newDist').value||50);
+ gid('addBranch').onclick=()=>selected?.kind==='edge'&&addBranch(selected.id,gid('branchType').value,gid('branchDir').value,+gid('branchDist').value||50);
+ gid('addFreeArrow').onclick=()=>selected?.kind==='edge'&&addFreeArrow(selected.id,gid('branchDir').value,+gid('branchDist').value||70,'');
+ gid('deleteSel').onclick=deleteSelected; gid('duplicateSel').onclick=duplicateSelected;
+ ['hCompany','hDept','hAuthor','hDate','hArea','hProcess','hPage'].forEach(id=>gid(id).oninput=updateHeaderFromPanel); gid('sheetColor').oninput=e=>{cur().colors.sheet=e.target.value;renderPage(active)}; gid('headerColor').oninput=e=>{cur().colors.header=e.target.value;renderPage(active)};
+ gid('editNum').oninput=e=>{let n=getNode(selected?.id); if(n){n.num=e.target.value;renderPage(active)}}; gid('editText').oninput=e=>{let n=getNode(selected?.id); if(n){n.text=e.target.value;renderPage(active)}}; gid('editScale').oninput=e=>{let n=getNode(selected?.id); if(n){n.scale=+e.target.value/100;renderPage(active)}}; gid('editFont').oninput=e=>{let n=getNode(selected?.id); if(n){n.font=+e.target.value;renderPage(active)}};
+ gid('edgeStroke').oninput=e=>{let ed=getEdge(selected?.id); if(ed){ed.stroke=+e.target.value;renderPage(active)}};
+ gid('edgeHead').oninput=e=>{let ed=getEdge(selected?.id); if(ed){ed.head=+e.target.value;renderPage(active)}};
+ document.addEventListener('keydown',e=>{if(e.key==='Delete')deleteSelected(); if(e.ctrlKey&&e.key.toLowerCase()==='d'){e.preventDefault();duplicateSelected()}});
+ document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',onUp);
+ document.body.addEventListener('mousedown',e=>{if(!e.target.closest('.node,.edgeHandle,.endHandle,.bendHandle,.qbtn,.palette,.props,.sidebar,.topbar')){select(null)}});
+ els.workspace.addEventListener('scroll',updateQuick); window.addEventListener('resize',updateQuick);
+ els.quick.querySelectorAll('.qbtn').forEach(b=>b.onclick=e=>{e.stopPropagation();openPalette(b.dataset.dir,b.getBoundingClientRect())});
+ buildPalette();
+}
+function buildPalette(){els.palette.innerHTML=''; const icon={operation:'<circle cx="14" cy="14" r="10" fill="none" stroke="#111" stroke-width="2"/>',inspection:'<rect x="5" y="5" width="18" height="18" fill="none" stroke="#111" stroke-width="2"/>',combined:'<rect x="5" y="5" width="18" height="18" fill="none" stroke="#111" stroke-width="2"/><circle cx="14" cy="14" r="7" fill="none" stroke="#111" stroke-width="2"/>',material:'<line x1="3" y1="18" x2="25" y2="18" stroke="#111" stroke-width="3"/>',intermediate:'<line x1="3" y1="8" x2="25" y2="8" stroke="#111" stroke-width="3"/><line x1="3" y1="22" x2="25" y2="22" stroke="#111" stroke-width="3"/>',note:'<rect x="4" y="6" width="20" height="16" rx="3" fill="none" stroke="#111" stroke-dasharray="3 2"/>',pentagonUp:'<polygon points="14,2 25,10 21,25 7,25 3,10" fill="none" stroke="#111" stroke-width="2"/>',pentagonDown:'<polygon points="7,3 21,3 25,18 14,26 3,18" fill="none" stroke="#111" stroke-width="2"/>'};
+ TYPES.forEach(t=>{let b=document.createElement('button'); b.title=labelType(t); b.innerHTML='<svg viewBox="0 0 28 28">'+icon[t]+'</svg>'; b.onclick=()=>{if(selected?.kind==='node')addConnected(selected.id,t,paletteDir,50); else if(selected?.kind==='edge')addBranch(selected.id,t,paletteDir,50); els.palette.style.display='none'}; els.palette.appendChild(b)});
+ let ar=document.createElement('button'); ar.title='Flecha libre'; ar.innerHTML='<svg viewBox="0 0 28 28"><line x1="3" y1="14" x2="22" y2="14" stroke="#111" stroke-width="2"/><polygon points="22,9 27,14 22,19" fill="#111"/></svg>'; ar.onclick=()=>{if(selected?.kind==='edge')addFreeArrow(selected.id,paletteDir,70,''); els.palette.style.display='none'}; els.palette.appendChild(ar);
+}
+function syncPageNumbers(){pages.forEach((p,i)=>p.header.page=(i+1)+' de '+pages.length)}
+function renderAll(){els.tabs.innerHTML=''; els.wrap.innerHTML=''; pages.forEach((p,i)=>{let tab=document.createElement('button');tab.className='tab '+(i===active?'active':'');tab.textContent='Hoja '+(i+1);tab.onclick=()=>{active=i;select(null);renderAll()};els.tabs.appendChild(tab); renderPageShell(i)}); renderPage(active); updatePanel();}
+function renderPageShell(i){const p=pages[i]; let s=document.createElement('div'); s.className='sheet '+(i===active?'':'hidden'); s.id='sheet'+i; s.style.background=p.colors.sheet; s.ondragover=e=>e.preventDefault(); s.ondrop=e=>{if(i!==active)return; let type=e.dataTransfer.getData('type'); if(!type)return; let r=s.getBoundingClientRect(); addNode(type,e.clientX-r.left,e.clientY-r.top-128);};
+ s.innerHTML=`<div class="header" id="header${i}" style="background:${p.colors.header}"><div class="h-title" contenteditable="true" data-h="company">${esc(p.header.company)}</div><div class="h-sub">DIAGRAMA DE OPERACIONES DEL PROCESO DOP</div><div class="h-grid"><div class="hcell">Departamento <input data-h="dept"></div><div class="hcell">Elaborado por <input data-h="author"></div><div class="hcell">Fecha <input data-h="date"></div><div class="hcell">Página <input data-h="page"></div><div class="hcell">Área <input data-h="area"></div><div class="hcell" style="grid-column:span 3">Nombre del proceso <input data-h="process"></div></div></div><div class="canvas" id="canvas${i}"><svg class="svg" id="svg${i}"></svg></div>`; els.wrap.appendChild(s); s.querySelectorAll('[data-h]').forEach(inp=>{const k=inp.dataset.h;if(inp.tagName==='INPUT')inp.value=p.header[k]||'';inp.oninput=()=>{p.header[k]=inp.value||inp.textContent;loadHeaderPanel()}; if(inp.contentEditable==='true')inp.oninput=()=>{p.header[k]=inp.textContent;loadHeaderPanel()};});}
+function renderPage(i){let old=seltxt(); const s=gid('sheet'+i); if(!s)return; s.classList.toggle('hidden',i!==active); const p=pages[i]; s.style.background=p.colors.sheet; const h=gid('header'+i); if(h)h.style.background=p.colors.header; const c=gid('canvas'+i); const svg=gid('svg'+i); if(!c)return; c.querySelectorAll('.node,.edgeLabel,.edgeHandle,.endHandle,.bendHandle').forEach(x=>x.remove()); svg.innerHTML='<defs><marker id="arr'+i+'" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L8,3 z" fill="#111"/></marker></defs>';
+ p.edges.forEach(ed=>drawEdge(ed,c,svg)); p.nodes.forEach(n=>drawNode(n,c)); restoreSelection(old); updateQuick(); updatePanel();}
+function esc(s){return String(s??'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
+function seltxt(){return selected?selected.kind+':'+selected.id:null} function restoreSelection(t){if(!t)return; let [k,id]=t.split(':'); selected={kind:k,id};}
+function defaultText(t){return {material:'Material',operation:'Operación',inspection:'Inspección',combined:'Operación e inspección',intermediate:'Producto intermedio',note:'Nota',pentagonUp:'',pentagonDown:''}[t]||''}
+function labelType(t){return {material:'Entrada de material',operation:'Operación',inspection:'Inspección',combined:'Operación + inspección',intermediate:'Producto intermedio',note:'Nota',pentagonUp:'Pentágono arriba',pentagonDown:'Pentágono abajo'}[t]}
+function addNode(type,x,y){let n={id:uid('n'),type,x:Math.max(10,x),y:Math.max(10,y),text:defaultText(type),num:defaultCode(type),scale:1,font:13,w:null,h:null}; let p=clampNodePosition(n,x,y); n.x=p.x; n.y=p.y; cur().nodes.push(n); select({kind:'node',id:n.id}); renderPage(active); return n}
+function defaultCode(type){if(NUM_TYPES.includes(type))return nextNum(type); if(LETTER_TYPES.includes(type))return nextLetter(); return ''}
+function nextNum(type){let nums=cur().nodes.filter(n=>n.type===type).map(n=>parseInt(n.num)).filter(Boolean); return (nums.length?Math.max(...nums):0)+1}
+function nextLetter(){let used=cur().nodes.filter(n=>LETTER_TYPES.includes(n.type)).map(n=>String(n.num||'').toUpperCase().charCodeAt(0)-64).filter(v=>v>0); let v=(used.length?Math.max(...used):0)+1; return letterFromIndex(v)}
+function letterFromIndex(n){let s=''; while(n>0){n--; s=String.fromCharCode(65+n%26)+s; n=Math.floor(n/26)} return s}
+function clampNodePosition(n,x,y){
+  let box=nodeBox({...n,scale:n.scale||1});
+  return {x:Math.max(10,Math.min(SHEET_W-box.w-10,x)), y:Math.max(10,Math.min(CANVAS_H-box.h-10,y))};
+}
+function floatClamp(el,x,y,pad=8){
+  if(!el) return {x,y};
+  let w=el.offsetWidth||180, h=el.offsetHeight||48;
+  let minX=window.scrollX+pad, maxX=window.scrollX+window.innerWidth-w-pad;
+  let minY=window.scrollY+pad, maxY=window.scrollY+window.innerHeight-h-pad;
+  return {x:Math.max(minX,Math.min(maxX,x)), y:Math.max(minY,Math.min(maxY,y))};
+}
+function edgeMainSegment(ed){
+  let pts=edgePointsRaw(ed), best=null;
+  for(let i=0;i<pts.length-1;i++){
+    let a=pts[i], b=pts[i+1], l=Math.hypot(b.x-a.x,b.y-a.y);
+    if(!best||l>best.l) best={a,b,l};
+  }
+  return best||{a:{x:0,y:0},b:{x:0,y:0},l:0};
+}
+function edgeOrientation(ed){
+  let s=edgeMainSegment(ed);
+  return Math.abs(s.a.x-s.b.x) < Math.abs(s.a.y-s.b.y) ? 'v' : 'h';
+}
+function routeOneBend(a,b,fromRef,toRef){
+  let sourcePref=null, targetPref=null;
+  if(fromRef?.kind==='edge') sourcePref = edgeOrientation(getEdge(fromRef.id))==='v' ? 'h' : 'v';
+  else if(['top','bottom'].includes(fromRef?.port||'')) sourcePref='v';
+  else if(['left','right'].includes(fromRef?.port||'')) sourcePref='h';
+  if(toRef?.kind==='edge') targetPref = edgeOrientation(getEdge(toRef.id))==='v' ? 'h' : 'v';
+  else if(['top','bottom'].includes(toRef?.port||'')) targetPref='v';
+  else if(['left','right'].includes(toRef?.port||'')) targetPref='h';
+  let choice;
+  if(sourcePref==='v' || targetPref==='h') choice='vfirst';
+  else if(sourcePref==='h' || targetPref==='v') choice='hfirst';
+  else choice=(Math.abs(a.x-b.x)>Math.abs(a.y-b.y)?'hfirst':'vfirst');
+  return choice==='vfirst' ? compactPts([a,{x:a.x,y:b.y},b]) : compactPts([a,{x:b.x,y:a.y},b]);
+}
+function drawNode(n,c){let d=document.createElement('div'); d.className='node '+n.type+(selected?.kind==='node'&&selected.id===n.id?' selected':''); d.dataset.id=n.id; d.style.left=n.x+'px'; d.style.top=n.y+'px'; d.style.transform=`scale(${n.scale||1})`; d.style.transformOrigin='0 0';
+ if(['operation','inspection','combined'].includes(n.type)){d.innerHTML='<div class="shape"><input class="num" value="'+esc(n.num)+'"></div><textarea class="desc">'+esc(n.text)+'</textarea>'+ports()+'<div class="resize"></div>'}
+ else if(n.type==='material'){d.innerHTML='<input class="mat-text" value="'+esc(n.text)+'">'+ports()+'<div class="resize"></div>'}
+ else if(n.type==='intermediate'){d.innerHTML='<input class="mat-text" value="'+esc(n.text)+'">'+ports()+'<div class="resize"></div>'}
+ else if(n.type==='note'){d.innerHTML='<textarea>'+esc(n.text)+'</textarea><div class="noteMove" title="Mover nota">✥</div>'+ports()+'<div class="resize"></div>'}
+ else if(n.type==='pentagonUp'||n.type==='pentagonDown'){let pts=n.type==='pentagonUp'?'32,2 62,24 52,56 12,56 2,24':'12,2 52,2 62,34 32,56 2,34'; d.innerHTML='<div class="shape"><svg viewBox="0 0 64 58" aria-hidden="true"><polygon points="'+pts+'"></polygon></svg><input class="num" value="'+esc(n.num)+'"></div>'+ports()+'<div class="resize"></div>'}
+ else {d.innerHTML='<div class="shape"></div><input class="mat-text" value="'+esc(n.text)+'">'+ports()+'<div class="resize"></div>'}
+ c.appendChild(d); const box=nodeBox(n); d.style.width=box.w+'px'; d.style.height=box.h+'px'; d.querySelectorAll('textarea,input').forEach(inp=>{inp.style.fontSize=(n.font||13)+'px'; inp.onmousedown=e=>{e.stopPropagation(); if(!(selected?.kind==='node'&&selected.id===n.id)){selected={kind:'node',id:n.id}; updateQuick(); updatePanel(); d.classList.add('selected')}}; inp.onfocus=()=>{selected={kind:'node',id:n.id}; updateQuick(); updatePanel(); d.classList.add('selected')}; inp.oninput=e=>{if(inp.classList.contains('num'))n.num=inp.value; else n.text=inp.value; updatePanel()}});
+ d.onmousedown=e=>{if(e.target.classList.contains('port')||e.target.classList.contains('resize')||['INPUT','TEXTAREA'].includes(e.target.tagName))return; e.stopPropagation(); select({kind:'node',id:n.id}); drag={mode:'node',id:n.id,sx:e.clientX,sy:e.clientY,ox:n.x,oy:n.y}; renderPage(active)};
+ d.querySelectorAll('.port').forEach(pt=>{pt.onmousedown=e=>{e.stopPropagation();select({kind:'node',id:n.id}); startConnect({kind:'node',id:n.id,port:pt.dataset.port},e)}});
+ const mover=d.querySelector('.noteMove'); if(mover)mover.onmousedown=e=>{e.stopPropagation();select({kind:'node',id:n.id});drag={mode:'node',id:n.id,sx:e.clientX,sy:e.clientY,ox:n.x,oy:n.y};};
+ d.querySelector('.resize').onmousedown=e=>{e.stopPropagation();select({kind:'node',id:n.id});drag={mode:'resize',id:n.id,sx:e.clientX,sy:e.clientY,os:n.scale||1};};
+}
+function ports(){return '<span class="port top" data-port="top"></span><span class="port right" data-port="right"></span><span class="port bottom" data-port="bottom"></span><span class="port left" data-port="left"></span>'}
+function nodeBox(n){let s=n.scale||1; let base={operation:[240,62],inspection:[240,62],combined:[250,62],material:[180,58],intermediate:[185,66],note:[128,52],pentagonUp:[70,62],pentagonDown:[70,62]}[n.type]||[100,60]; return {w:base[0]*s,h:base[1]*s}}
+// Caja real usada para conectar: toma como centro la figura, no el texto lateral.
+function shapeBox(n){let s=n.scale||1; let base={operation:[58,58],inspection:[58,58],combined:[58,58],material:[180,58],intermediate:[185,66],note:[128,52],pentagonUp:[64,58],pentagonDown:[64,58]}[n.type]||[80,60]; return {w:base[0]*s,h:base[1]*s}}
+function portPoint(ref){if(ref.kind==='point')return {x:ref.x,y:ref.y}; if(ref.kind==='edge'){let ed=getEdge(ref.id); return pointOnEdge(ed,ref.t??.5)} let n=getNode(ref.id); let b=shapeBox(n), x=n.x,y=n.y; const pos={top:[b.w/2,0],bottom:[b.w/2,b.h],left:[0,b.h/2],right:[b.w,b.h/2]}[ref.port||'bottom']; return {x:x+pos[0],y:y+pos[1]}}
+function drawEdge(ed,c,svg){let pts=edgePoints(ed); let sw=+(ed.stroke||3), hs=+(ed.head||10);
+ let defs=svg.querySelector('defs'); if(defs){let m=document.createElementNS('http://www.w3.org/2000/svg','marker'); let mid='arr'+active+'_'+ed.id; m.setAttribute('id',mid); m.setAttribute('markerWidth',hs); m.setAttribute('markerHeight',hs); m.setAttribute('refX',hs*.82); m.setAttribute('refY',hs/2); m.setAttribute('orient','auto'); m.setAttribute('markerUnits','userSpaceOnUse'); let tri=document.createElementNS('http://www.w3.org/2000/svg','path'); tri.setAttribute('d',`M0,0 L0,${hs} L${hs*.82},${hs/2} z`); tri.setAttribute('fill','#111'); m.appendChild(tri); defs.appendChild(m); }
+ let path=document.createElementNS('http://www.w3.org/2000/svg','path'); path.setAttribute('d','M '+pts.map(p=>p.x+' '+p.y).join(' L ')); path.dataset.id=ed.id; path.setAttribute('class','edge '+(selected?.kind==='edge'&&selected.id===ed.id?'selected':'')); path.setAttribute('stroke-width',selected?.kind==='edge'&&selected.id===ed.id?sw+1:sw); path.setAttribute('marker-end','url(#arr'+active+'_'+ed.id+')'); path.onmousedown=e=>{e.stopPropagation();select({kind:'edge',id:ed.id}); renderPage(active)}; svg.appendChild(path);
+ if(selected?.kind==='edge'&&selected.id===ed.id){
+   let mid=edgeHandlePoint(pts); addHandle(c,'edgeHandle',mid.x,mid.y,e=>{startConnect({kind:'edge',id:ed.id,t:.5},e)});
+   let a=pts[0], b=pts[pts.length-1]; addHandle(c,'endHandle tail',a.x,a.y,e=>{startEndpointDrag(ed.id,'from',e)}); addHandle(c,'endHandle head',b.x,b.y,e=>{startEndpointDrag(ed.id,'to',e)});
+   let bp=bendPoint(ed,pts); addHandle(c,'bendHandle',bp.x,bp.y,e=>{drag={mode:'bend',id:ed.id,sx:e.clientX,sy:e.clientY,ox:ed.bx,oy:ed.by};});
+ }
+}
+function addHandle(c,cls,x,y,down){let h=document.createElement('div');h.className=cls;h.style.left=x+'px';h.style.top=y+'px'; if(cls.includes('edgeHandle')&&selected?.kind==='edge')h.dataset.edge=selected.id; h.onmousedown=e=>{e.stopPropagation();down(e)};c.appendChild(h)}
+function edgePoints(ed){
+ let a=portPoint(ed.from), b=portPoint(ed.to);
+ if(ed.freeAxis && ed.to?.kind==='point'){
+   if(ed.freeAxis==='h') return compactPts([a,{x:b.x,y:a.y}]);
+   if(ed.freeAxis==='v') return compactPts([a,{x:a.x,y:b.y}]);
+ }
+ if(Math.abs(a.x-b.x)<4||Math.abs(a.y-b.y)<4)return [a,b];
+ if(ed.bx!=null) return compactPts([a,{x:ed.bx,y:a.y},{x:ed.bx,y:b.y},b]);
+ if(ed.by!=null) return compactPts([a,{x:a.x,y:ed.by},{x:b.x,y:ed.by},b]);
+ return routeOneBend(a,b,ed.from,ed.to);
+}
+function compactPts(pts){
+ let out=[];
+ for(let p of pts){
+   if(!out.length){out.push(p); continue}
+   let last=out[out.length-1];
+   if(Math.abs(last.x-p.x)<1 && Math.abs(last.y-p.y)<1) continue;
+   out.push(p);
+ }
+ for(let i=out.length-2;i>0;i--){
+   let a=out[i-1],b=out[i],c=out[i+1];
+   if((Math.abs(a.x-b.x)<1&&Math.abs(b.x-c.x)<1)||(Math.abs(a.y-b.y)<1&&Math.abs(b.y-c.y)<1)) out.splice(i,1);
+ }
+ return out;
+}
+function bendPoint(ed,pts){if(pts.length<4)return midPoint(pts); return pts[1].x===pts[2].x?{x:pts[1].x,y:(pts[1].y+pts[2].y)/2}:{x:(pts[1].x+pts[2].x)/2,y:pts[1].y}}
+
+function edgeHandlePoint(pts){
+ let best=null;
+ for(let i=0;i<pts.length-1;i++){
+   let a=pts[i],b=pts[i+1],l=Math.hypot(b.x-a.x,b.y-a.y);
+   if(!best||l>best.l)best={a,b,l};
+ }
+ if(!best)return pts[0]||{x:0,y:0};
+ return {x:(best.a.x+best.b.x)/2,y:(best.a.y+best.b.y)/2};
+}
+function midPoint(pts){let segs=[],len=0;for(let i=0;i<pts.length-1;i++){let l=Math.hypot(pts[i+1].x-pts[i].x,pts[i+1].y-pts[i].y);segs.push(l);len+=l}let acc=0;for(let i=0;i<segs.length;i++){if(acc+segs[i]>=len/2){let r=(len/2-acc)/segs[i];return {x:pts[i].x+(pts[i+1].x-pts[i].x)*r,y:pts[i].y+(pts[i+1].y-pts[i].y)*r}}acc+=segs[i]}return pts[0]}
+function pointOnEdge(ed,t=.5){let pts=edgePointsRaw(ed); if(Math.abs((t??.5)-.5)<.001)return edgeHandlePoint(pts); return pointAtT(pts,t)}
+function pointAtT(pts,t=.5){let segs=[],len=0;for(let i=0;i<pts.length-1;i++){let l=Math.hypot(pts[i+1].x-pts[i].x,pts[i+1].y-pts[i].y);segs.push(l);len+=l}let target=len*Math.max(0,Math.min(1,t));let acc=0;for(let i=0;i<segs.length;i++){if(acc+segs[i]>=target){let r=segs[i]?((target-acc)/segs[i]):0;return {x:pts[i].x+(pts[i+1].x-pts[i].x)*r,y:pts[i].y+(pts[i+1].y-pts[i].y)*r}}acc+=segs[i]}return pts[pts.length-1]}
+function edgePointsRaw(ed){let a=portPoint(ed.from), b=portPoint(ed.to); if(ed.from.kind==='edge'){let e=getEdge(ed.from.id); a=(Math.abs((ed.from.t??.5)-.5)<.001)?edgeHandlePoint(edgePoints(e)):pointAtT(edgePoints(e),ed.from.t??.5)} if(ed.to.kind==='edge'){let e=getEdge(ed.to.id); b=(Math.abs((ed.to.t??.5)-.5)<.001)?edgeHandlePoint(edgePoints(e)):pointAtT(edgePoints(e),ed.to.t??.5)} if(Math.abs(a.x-b.x)<4||Math.abs(a.y-b.y)<4)return [a,b]; if(ed.bx!=null)return [a,{x:ed.bx,y:a.y},{x:ed.bx,y:b.y},b]; let by=ed.by??((a.y+b.y)/2); return [a,{x:a.x,y:by},{x:b.x,y:by},b]}
+function addEdge(from,to,opts={}){let ed={id:uid('e'),from,to,label:'',bx:null,by:null,stroke:3,head:10,freeAxis:opts.freeAxis||null}; cur().edges.push(ed); select({kind:'edge',id:ed.id}); renderPage(active); return ed}
+
+function startEndpointDrag(edgeId,end,e){
+ endpointDrag={edgeId,end}; drag={mode:'edgeEnd'}; makeEndpointPreview(e)
+}
+function updateEndpointPreview(e){
+ let p=gid('preview'); if(!p||!endpointDrag)return;
+ let ed=getEdge(endpointDrag.edgeId), r=canvas().getBoundingClientRect();
+ let mouse={x:e.clientX-r.left,y:e.clientY-r.top};
+ let snap=findEndpointTarget(e,endpointDrag.end,ed);
+ let b=snap?portPoint(snap):mouse;
+ let from=endpointDrag.end==='from'?b:portPoint(ed.from);
+ let to=endpointDrag.end==='to'?b:portPoint(ed.to);
+ let fake={from:{kind:'point',p:from},to:{kind:'point',p:to},bx:ed.bx,by:ed.by};
+ let pts;
+ if(ed.freeAxis && endpointDrag.end==='to' && (!snap || snap.kind==='point')){ pts=ed.freeAxis==='h'?[from,{x:to.x,y:from.y}]:[from,{x:from.x,y:to.y}]; }
+ else pts=edgePointsBetween(from,to,ed.from.port,ed.to.port,ed.bx,ed.by);
+ p.setAttribute('d','M '+compactPts(pts).map(q=>q.x+' '+q.y).join(' L '))
+}
+function findEndpointTarget(e,end,ed){
+ let el=document.elementFromPoint(e.clientX,e.clientY);
+ if(el?.classList?.contains('port')) return {kind:'node',id:el.closest('.node').dataset.id,port:el.dataset.port};
+ let exclude=end==='from'?ed.to?.id:null;
+ let np=nearestNodePortFromMouse(e,ed.id);
+ if(np) return np;
+ let edge=nearestEdgeFromMouse(e,18,ed.id);
+ if(edge) return {kind:'edge',id:edge.id,t:.5};
+ return null
+}
+function nearestNodePortFromMouse(e,excludeEdgeId=null){
+ let r=canvas().getBoundingClientRect(); let p={x:e.clientX-r.left,y:e.clientY-r.top};
+ let best=null;
+ for(let n of cur().nodes){
+   let b=shapeBox(n), x=n.x, y=n.y;
+   let center={x:x+b.w/2,y:y+b.h/2};
+   let ports={top:{x:center.x,y:y},bottom:{x:center.x,y:y+b.h},left:{x:x,y:center.y},right:{x:x+b.w,y:center.y}};
+   let inside=p.x>=x-28&&p.x<=x+b.w+28&&p.y>=y-28&&p.y<=y+b.h+28;
+   for(let port in ports){
+     let q=ports[port]; let d=Math.hypot(p.x-q.x,p.y-q.y);
+     if((inside||d<38) && (!best||d<best.d)) best={kind:'node',id:n.id,port,d};
+   }
+ }
+ return best?{kind:'node',id:best.id,port:best.port}:null
+}
+function edgePointsBetween(a,b,fport='',tport='',bx=null,by=null){
+ if(Math.abs(a.x-b.x)<4||Math.abs(a.y-b.y)<4)return [a,b];
+ if(bx!=null)return compactPts([a,{x:bx,y:a.y},{x:bx,y:b.y},b]);
+ if(by!=null)return compactPts([a,{x:a.x,y:by},{x:b.x,y:by},b]);
+ return routeOneBend(a,b,{port:fport},{port:tport})
+}
+
+function startConnect(from,e){connecting={from}; drag={mode:'connect'}; makePreview(e)}
+function makePreview(e){let svg=gid('svg'+active); let old=gid('preview'); if(old)old.remove(); let p=document.createElementNS('http://www.w3.org/2000/svg','path'); p.id='preview'; p.setAttribute('class','edge'); p.style.stroke='#111'; p.style.strokeDasharray=''; p.setAttribute('marker-end','url(#arr'+active+')'); svg.appendChild(p); updatePreview(e)}
+
+function showSnapMarker(p){
+  const c=canvas(); if(!c)return;
+  let old=gid('snapMarker'); if(old)old.remove();
+  if(!p)return;
+  let m=document.createElement('div'); m.id='snapMarker'; m.className='snapMarker'; m.style.left=p.x+'px'; m.style.top=p.y+'px'; c.appendChild(m);
+}
+function updatePreview(e){
+ let p=gid('preview'); if(!p||!connecting)return;
+ let r=canvas().getBoundingClientRect();
+ let a=portPoint(connecting.from), b={x:e.clientX-r.left,y:e.clientY-r.top};
+ let targetEdge=nearestEdgeFromMouse(e,18,connecting.from.kind==='edge'?connecting.from.id:null);
+ showSnapMarker(null);
+ let fakeTo={kind:'point'};
+ if(targetEdge){b=edgeHandlePoint(edgePoints(targetEdge)); showSnapMarker(b); fakeTo={kind:'edge',id:targetEdge.id,t:.5};}
+ let pts=routeOneBend(a,b,connecting.from,fakeTo);
+ if(connecting.from.kind==='edge' && !targetEdge && (connecting.from.port==null)){
+   let orient=edgeOrientation(getEdge(connecting.from.id));
+   pts = orient==='v' ? compactPts([a,{x:b.x,y:a.y},b]) : compactPts([a,{x:a.x,y:b.y},b]);
+ }
+ p.setAttribute('d','M '+compactPts(pts).map(q=>q.x+' '+q.y).join(' L '))
+}
+function onMove(e){if(drag?.mode==='node'){let n=getNode(drag.id); let p=clampNodePosition(n,drag.ox+e.clientX-drag.sx,drag.oy+e.clientY-drag.sy); n.x=p.x; n.y=p.y; renderPage(active)} else if(drag?.mode==='resize'){let n=getNode(drag.id); n.scale=Math.max(.65,Math.min(1.7,drag.os+(e.clientX-drag.sx)/160)); renderPage(active)} else if(drag?.mode==='bend'){let ed=getEdge(drag.id); let r=canvas().getBoundingClientRect(); let x=e.clientX-r.left,y=e.clientY-r.top; let pts=edgePoints(ed); if(pts.length>=4){if(Math.abs(pts[1].x-pts[2].x)<2){ed.bx=x;ed.by=null}else{ed.by=y;ed.bx=null}} else {ed.bx=x;ed.by=null} renderPage(active)} else if(drag?.mode==='connect') updatePreview(e); else if(drag?.mode==='edgeEnd') updateEndpointPreview(e)}
+function onUp(e){
+ showSnapMarker(null);
+ if(drag?.mode==='connect'&&connecting){let target=findTarget(e); gid('preview')?.remove(); if(!target){let r=canvas().getBoundingClientRect(); target={kind:'point',x:e.clientX-r.left,y:e.clientY-r.top}} if(target && !(target.kind===connecting.from.kind&&target.id===connecting.from.id)){let ed=addEdge(connecting.from,target);} connecting=null;}
+ else if(drag?.mode==='edgeEnd'&&endpointDrag){let ed=getEdge(endpointDrag.edgeId); let target=findEndpointTarget(e,endpointDrag.end,ed); gid('preview')?.remove(); if(!target){let r=canvas().getBoundingClientRect(); target={kind:'point',x:e.clientX-r.left,y:e.clientY-r.top}} if(target){ if(endpointDrag.end==='from') ed.from=target; else { if(ed.freeAxis && target.kind==='point'){let a=portPoint(ed.from); if(ed.freeAxis==='h')target.y=a.y; if(ed.freeAxis==='v')target.x=a.x;} ed.to=target; } ed.bx=null; ed.by=null; select({kind:'edge',id:ed.id}); renderPage(active);} endpointDrag=null;}
+ drag=null
+}
+function findTarget(e){
+ let el=document.elementFromPoint(e.clientX,e.clientY);
+ if(el?.classList?.contains('port')) return {kind:'node',id:el.closest('.node').dataset.id,port:el.dataset.port};
+ if(el?.classList?.contains('edgeHandle')) return {kind:'edge',id:el.dataset.edge||selected?.id,t:.5};
+ let exclude=connecting?.from?.kind==='edge'?connecting.from.id:null;
+ let nearest=nearestEdgeFromMouse(e,20,exclude);
+ if(nearest) return {kind:'edge',id:nearest.id,t:.5};
+ let path=el?.closest?.('path.edge');
+ if(path){let id=path.dataset.id; let ed=getEdge(id); if(ed && id!==exclude) return {kind:'edge',id:ed.id,t:.5}}
+ return null
+}
+function nearestEdgeFromMouse(e,threshold=18,excludeId=null){
+ let r=canvas().getBoundingClientRect(); let p={x:e.clientX-r.left,y:e.clientY-r.top};
+ let best=null;
+ for(let ed of cur().edges){
+   if(ed.id===excludeId) continue;
+   let d=distancePointToPolyline(p,edgePoints(ed));
+   if(d<threshold && (!best || d<best.d)) best={ed,d};
+ }
+ return best?.ed||null;
+}
+function distancePointToPolyline(p,pts){
+ let best=1e9;
+ for(let i=0;i<pts.length-1;i++){
+   let a=pts[i],b=pts[i+1];
+   let vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy;
+   let u=l2?Math.max(0,Math.min(1,((p.x-a.x)*vx+(p.y-a.y)*vy)/l2)):0;
+   let x=a.x+vx*u,y=a.y+vy*u;
+   best=Math.min(best,Math.hypot(p.x-x,p.y-y));
+ }
+ return best;
+}
+function edgeTFromMouse(ed,e){let r=canvas().getBoundingClientRect(); let p={x:e.clientX-r.left,y:e.clientY-r.top}; let pts=edgePoints(ed), total=0, segs=[]; for(let i=0;i<pts.length-1;i++){let a=pts[i],b=pts[i+1],l=Math.hypot(b.x-a.x,b.y-a.y);segs.push({a,b,l});total+=l} let best={d:1e9,acc:0,part:0}; let acc=0; for(let seg of segs){let vx=seg.b.x-seg.a.x,vy=seg.b.y-seg.a.y; let u=seg.l?Math.max(0,Math.min(1,((p.x-seg.a.x)*vx+(p.y-seg.a.y)*vy)/(seg.l*seg.l))):0; let px=seg.a.x+vx*u, py=seg.a.y+vy*u; let d=Math.hypot(p.x-px,p.y-py); if(d<best.d)best={d,acc,part:u*seg.l}; acc+=seg.l} return total?((best.acc+best.part)/total):.5}
+function protoShape(type){let base={operation:[58,58],inspection:[58,58],combined:[58,58],material:[180,58],intermediate:[185,66],note:[128,52],pentagonUp:[64,58],pentagonDown:[64,58]}[type]||[80,60];return {w:base[0],h:base[1]}}
+function addConnected(srcId,type,dir,dist=50){let s=getNode(srcId), sb=shapeBox(s), nb=protoShape(type), nx=s.x, ny=s.y, fromPort='bottom', toPort='top'; if(dir==='bottom'){nx=s.x+sb.w/2-nb.w/2;ny=s.y+sb.h+dist;fromPort='bottom';toPort='top'} if(dir==='top'){nx=s.x+sb.w/2-nb.w/2;ny=s.y-nb.h-dist;fromPort='top';toPort='bottom'} if(dir==='right'){nx=s.x+sb.w+dist;ny=s.y+sb.h/2-nb.h/2;fromPort='right';toPort='left'} if(dir==='left'){nx=s.x-nb.w-dist;ny=s.y+sb.h/2-nb.h/2;fromPort='left';toPort='right'} let n=addNode(type,nx,ny); addEdge({kind:'node',id:s.id,port:fromPort},{kind:'node',id:n.id,port:toPort}); select({kind:'node',id:n.id}); renderPage(active)}
+function addBranch(edgeId,type,dir,dist=50){let ed=getEdge(edgeId), p=edgeHandlePoint(edgePoints(ed)); let x=p.x,y=p.y, portFrom='right', portTo='left'; let nb0=protoShape(type), nb=[nb0.w,nb0.h]; if(dir==='right'){x+=dist;y-=nb[1]/2;portFrom='right';portTo='left'} if(dir==='left'){x-=dist+nb[0];y-=nb[1]/2;portFrom='left';portTo='right'} if(dir==='bottom'){x-=nb[0]/2;y+=dist;portFrom='bottom';portTo='top'} if(dir==='top'){x-=nb[0]/2;y-=dist+nb[1];portFrom='top';portTo='bottom'} let n=addNode(type,x,y); addEdge({kind:'edge',id:edgeId,t:.5},{kind:'node',id:n.id,port:portTo}); select({kind:'node',id:n.id}); renderPage(active)}
+function addFreeArrow(edgeId,dir='right',dist=70,label=''){let ed=getEdge(edgeId), p=edgeHandlePoint(edgePoints(ed)); let q={x:p.x,y:p.y}; const axis=(dir==='left'||dir==='right')?'h':'v'; if(dir==='right')q.x+=dist; if(dir==='left')q.x-=dist; if(dir==='bottom')q.y+=dist; if(dir==='top')q.y-=dist; let e=addEdge({kind:'edge',id:edgeId,t:.5},{kind:'point',x:q.x,y:q.y},{freeAxis:axis}); select({kind:'edge',id:e.id}); renderPage(active); return e}
+function select(obj){selected=obj; document.querySelectorAll('.selected').forEach(x=>x.classList.remove('selected')); updateQuick(); updatePanel()}
+function updateQuick(){
+ const q=els.quick;
+ if(selected?.kind==='edge'){
+   let ed=getEdge(selected.id); if(!ed){q.style.display='none';return}
+   let m=edgeHandlePoint(edgePoints(ed)), r=sheet().getBoundingClientRect();
+   const cx=r.left+window.scrollX+m.x, cy=r.top+window.scrollY+128+m.y;
+   q.style.display='block'; q.style.left=cx+'px'; q.style.top=cy+'px';
+   q.querySelector('[data-dir=top]').style.cssText='left:-14px;top:-54px';
+   q.querySelector('[data-dir=bottom]').style.cssText='left:-14px;top:26px';
+   q.querySelector('[data-dir=left]').style.cssText='left:-54px;top:-14px';
+   q.querySelector('[data-dir=right]').style.cssText='left:26px;top:-14px';
+   let p=floatClamp(q,cx,cy); q.style.left=p.x+'px'; q.style.top=p.y+'px';
+   return;
+ }
+ if(!(selected?.kind==='node')){q.style.display='none';return}
+ let n=getNode(selected.id);
+ if(!n){q.style.display='none';return}
+ let b=shapeBox(n), r=sheet().getBoundingClientRect();
+ const cx=r.left+window.scrollX+n.x+b.w/2;
+ const cy=r.top+window.scrollY+128+n.y+b.h/2;
+ q.style.display='block';
+ q.style.left=cx+'px';
+ q.style.top=cy+'px';
+ q.querySelector('[data-dir=top]').style.cssText='left:-14px;top:-'+(b.h/2+42)+'px';
+ q.querySelector('[data-dir=bottom]').style.cssText='left:-14px;top:'+(b.h/2+14)+'px';
+ q.querySelector('[data-dir=left]').style.cssText='left:-'+(b.w/2+42)+'px;top:-14px';
+ q.querySelector('[data-dir=right]').style.cssText='left:'+(b.w/2+14)+'px;top:-14px';
+ let p=floatClamp(q,cx,cy); q.style.left=p.x+'px'; q.style.top=p.y+'px';
+}
+function openPalette(dir,rect){paletteDir=dir; els.palette.style.display='flex'; els.palette.style.left=(rect.left+window.scrollX)+'px'; els.palette.style.top=(rect.bottom+window.scrollY+6)+'px'; let p=floatClamp(els.palette,rect.left+window.scrollX,rect.bottom+window.scrollY+6); els.palette.style.left=p.x+'px'; els.palette.style.top=p.y+'px'}
+function updatePanel(){gid('nodeActions').style.display=selected?.kind==='node'?'block':'none'; gid('edgeActions').style.display=selected?.kind==='edge'?'block':'none'; gid('nodeEdit').style.display=selected?.kind==='node'?'block':'none'; gid('edgeEdit').style.display=selected?.kind==='edge'?'block':'none'; if(selected?.kind==='node'){let n=getNode(selected.id); gid('selInfo').textContent='Símbolo seleccionado: '+labelType(n.type); gid('editBox').textContent='Edita texto, número y tamaño.'; gid('editNum').value=n.num||''; gid('editText').value=n.text||''; gid('editScale').value=Math.round((n.scale||1)*100); gid('editFont').value=n.font||13;} else if(selected?.kind==='edge'){let ed=getEdge(selected.id); gid('selInfo').textContent='Flecha seleccionada. Usa las flechas celestes o el panel para crear una rama desde su punto medio.'; gid('editBox').textContent='Edita la flecha seleccionada.'; gid('edgeStroke').value=ed.stroke||3; gid('edgeHead').value=ed.head||10;} else {gid('selInfo').textContent='Selecciona una forma o una flecha.'; gid('editBox').textContent='No hay elemento seleccionado.';} loadHeaderPanel()}
+function loadHeaderPanel(){let h=cur().header; gid('hCompany').value=h.company||''; gid('hDept').value=h.dept||''; gid('hAuthor').value=h.author||''; gid('hDate').value=h.date||''; gid('hArea').value=h.area||''; gid('hProcess').value=h.process||''; gid('hPage').value=h.page||''; gid('sheetColor').value=cur().colors.sheet; gid('headerColor').value=cur().colors.header}
+function updateHeaderFromPanel(){let h=cur().header; h.company=gid('hCompany').value;h.dept=gid('hDept').value;h.author=gid('hAuthor').value;h.date=gid('hDate').value;h.area=gid('hArea').value;h.process=gid('hProcess').value;h.page=gid('hPage').value; renderAll()}
+function getNode(id){return cur().nodes.find(n=>n.id===id)} function getEdge(id){return cur().edges.find(e=>e.id===id)}
+function deleteSelected(){if(!selected)return; if(selected.kind==='node'){cur().nodes=cur().nodes.filter(n=>n.id!==selected.id); cur().edges=cur().edges.filter(e=>e.from.id!==selected.id&&e.to.id!==selected.id)} else cur().edges=cur().edges.filter(e=>e.id!==selected.id&&e.from.id!==selected.id&&e.to.id!==selected.id); selected=null; renderPage(active)}
+function duplicateSelected(){if(selected?.kind!=='node')return; let n=JSON.parse(JSON.stringify(getNode(selected.id))); n.id=uid('n'); n.x+=40; n.y+=40; n.num=defaultCode(n.type); cur().nodes.push(n); select({kind:'node',id:n.id}); renderPage(active)}
+function dopOrder(a,b){const ca=Math.round(a.x/90), cb=Math.round(b.x/90); if(ca!==cb)return cb-ca; return a.y-b.y}
+function renumber(){
+  // DOP didáctico: numeración independiente por símbolo. Se recorren columnas de derecha a izquierda y, dentro de cada columna, de arriba hacia abajo.
+  NUM_TYPES.forEach(t=>cur().nodes.filter(n=>n.type===t).sort(dopOrder).forEach((n,i)=>n.num=i+1));
+  cur().nodes.filter(n=>LETTER_TYPES.includes(n.type)).sort(dopOrder).forEach((n,i)=>n.num=letterFromIndex(i+1));
+  renderPage(active)
+}
+function saveJson(){let blob=new Blob([JSON.stringify({pages},null,2)],{type:'application/json'}); dl(blob,'dop_didactico.json')}
+function openJson(e){let f=e.target.files[0]; if(!f)return; let r=new FileReader(); r.onload=()=>{try{let data=JSON.parse(r.result); pages=data.pages||[data]; active=0; syncPageNumbers(); select(null); renderAll()}catch(err){alert('JSON no válido')}}; r.readAsText(f)}
+function dl(blob,name){let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+async function downloadPng(i){document.body.classList.add('exporting'); let el=gid('sheet'+i); let was=el.classList.contains('hidden'); el.classList.remove('hidden'); await new Promise(r=>setTimeout(r,60)); let canvas=await html2canvas(el,{backgroundColor:null,scale:2,useCORS:true}); canvas.toBlob(b=>dl(b,'dop_hoja_'+(i+1)+'.png')); if(was)el.classList.add('hidden'); document.body.classList.remove('exporting')}
+async function downloadAll(){document.body.classList.add('exporting'); let zip=new JSZip(); for(let i=0;i<pages.length;i++){let el=gid('sheet'+i),was=el.classList.contains('hidden'); el.classList.remove('hidden'); await new Promise(r=>setTimeout(r,50)); let c=await html2canvas(el,{backgroundColor:null,scale:2,useCORS:true}); let b=await new Promise(res=>c.toBlob(res)); zip.file('dop_hoja_'+(i+1)+'.png',b); if(was)el.classList.add('hidden')} document.body.classList.remove('exporting'); let blob=await zip.generateAsync({type:'blob'}); dl(blob,'dop_todas_las_hojas.zip')}
+</script>
+</body>
+</html>
