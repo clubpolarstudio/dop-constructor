@@ -135,14 +135,35 @@ function routeOneBend(a,b,fromRef,toRef){
   if(fromRef?.kind==='edge') sourcePref = edgeOrientation(getEdge(fromRef.id))==='v' ? 'h' : 'v';
   else if(['top','bottom'].includes(fromRef?.port||'')) sourcePref='v';
   else if(['left','right'].includes(fromRef?.port||'')) sourcePref='h';
+
   if(toRef?.kind==='edge') targetPref = edgeOrientation(getEdge(toRef.id))==='v' ? 'h' : 'v';
   else if(['top','bottom'].includes(toRef?.port||'')) targetPref='v';
   else if(['left','right'].includes(toRef?.port||'')) targetPref='h';
-  let choice;
-  if(sourcePref==='v' || targetPref==='h') choice='vfirst';
-  else if(sourcePref==='h' || targetPref==='v') choice='hfirst';
-  else choice=(Math.abs(a.x-b.x)>Math.abs(a.y-b.y)?'hfirst':'vfirst');
-  return choice==='vfirst' ? compactPts([a,{x:a.x,y:b.y},b]) : compactPts([a,{x:b.x,y:a.y},b]);
+
+  // Si la salida y la entrada son verticales, el último tramo debe entrar vertical.
+  // Esto evita el pequeño quiebre horizontal que aparecía al agregar una forma hacia abajo.
+  if(sourcePref==='v' && targetPref==='v'){
+    if(Math.abs(a.x-b.x)<4) return [a,b];
+    let y=(a.y+b.y)/2;
+    return compactPts([a,{x:a.x,y},{x:b.x,y},b]);
+  }
+
+  // Si la salida y la entrada son horizontales, el último tramo debe entrar horizontal.
+  if(sourcePref==='h' && targetPref==='h'){
+    if(Math.abs(a.y-b.y)<4) return [a,b];
+    let x=(a.x+b.x)/2;
+    return compactPts([a,{x,y:a.y},{x,y:b.y},b]);
+  }
+
+  // Cuando una punta debe entrar vertical, usa una L con último tramo vertical.
+  if(sourcePref==='h' && targetPref==='v') return compactPts([a,{x:b.x,y:a.y},b]);
+
+  // Cuando una punta debe entrar horizontal, usa una L con último tramo horizontal.
+  if(sourcePref==='v' && targetPref==='h') return compactPts([a,{x:a.x,y:b.y},b]);
+
+  return Math.abs(a.x-b.x)>Math.abs(a.y-b.y)
+    ? compactPts([a,{x:b.x,y:a.y},b])
+    : compactPts([a,{x:a.x,y:b.y},b]);
 }
 function drawNode(n,c){let d=document.createElement('div'); d.className='node '+n.type+(selected?.kind==='node'&&selected.id===n.id?' selected':''); d.dataset.id=n.id; d.style.left=n.x+'px'; d.style.top=n.y+'px'; d.style.transform=`scale(${n.scale||1})`; d.style.transformOrigin='0 0';
  if(['operation','inspection','combined'].includes(n.type)){d.innerHTML='<div class="shape"><input class="num" value="'+esc(n.num)+'"></div><textarea class="desc">'+esc(n.text)+'</textarea>'+ports()+'<div class="resize"></div>'}
